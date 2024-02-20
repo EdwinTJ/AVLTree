@@ -26,6 +26,13 @@ public class LadderGameSolution {
      */
     public LadderGameSolution(String filename) {
         random = new Random();
+        populateWordList(filename);
+        solutionQueue = new MyLinkedList<>();
+        priorityQueue = new AVLTree<>();
+
+    }
+
+    private void populateWordList(String filename) {
         wordLists = new ArrayList[MaxWordSize +1];
         for (int i = 0; i < MaxWordSize; i++) {
             wordLists[i] = new ArrayList<>();
@@ -36,15 +43,12 @@ public class LadderGameSolution {
             while (reader.hasNext()) {
                 String word = reader.next();
                 if (word.length() < MaxWordSize) {
-                    wordLists[word.length()].add(word);
+                    wordLists[word.length()-1].add(word);
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        solutionQueue = new MyLinkedList<>();
-        priorityQueue = new AVLTree<>();
-
     }
 
 
@@ -61,102 +65,22 @@ public class LadderGameSolution {
         }
 
         // Verify that provided words are valid
-        if (a.length() != b.length() || !wordLists[a.length()].contains(a) || !wordLists[b.length()].contains(b)) {
+        if (a.length() != b.length() || !wordLists[a.length()-1].contains(a) || !wordLists[b.length()-1].contains(b)) {
             System.out.println("No solution: Given words are not the same length");
             System.out.println();
             return;
         }
 //        findLadder(a, b);
         System.out.println("Brute Force:");
-        findLadder(a, b);
+        findLadder(a, b, new MyLinkedList<>(), false);
         System.out.println("A* Search:");
-        findLadderAStar(a, b);
+        findLadder(a,b, new AVLTree<>(), true);
 
     }
 
-    private boolean isOneCharApart(String word1, String word2) {
-        // Check if the lengths of the words are the same
-        if (word1.length() != word2.length()) {
-            return false;
-        }
-        // Logic to check if two words differ by one character
-        int differences = 0;
-        for (int i = 0; i < word1.length(); i++) {
-            if (word1.charAt(i) != word2.charAt(i)) {
-                differences++;
-            }
-        }
-        return differences == 1;
-    }
-
-
-    /**
-     * Display the word ladder from a to b
-     * Copy the wordList of the appropriate length so that you can delete a word when its
-     * used.
-     * @param a starting word
-     * @param b ending word
-     */
-    public void findLadder(String a, String b) {
-        ArrayList<String> list = wordLists[a.length()];
-        ArrayList<String> cloneList = (ArrayList<String>) list.clone();
-
-        System.out.println("Looking for a solution from " + a + " -> " + b + " Size of List " + cloneList.size());
-
-        // Verify that provided words are valid
-        if (a.length() >= MaxWordSize || b.length() >= MaxWordSize) {
-            System.out.println("No solution: Words exceed maximum length");
-            return;
-        }
-
-        if (a.length() != b.length() || !wordLists[a.length()].contains(a) || !wordLists[b.length()].contains(b)) {
-            System.out.println("No solution: Invalid input words");
-            return;
-        }
-
-        int count = 0;
-        cloneList.remove(a);
-        // Initialize the queue with the initial ladder
-        solutionQueue.addAtEnd(new LadderInfo(a, 0,  a ));
-        while (!solutionQueue.isEmpty() && !done) {
-            LadderInfo currLadder = solutionQueue.removeFromFront();
-            String lastWord = currLadder.lastWord;
-//            System.out.println("Remove current Ladder" + currLadder.toString());
-            ArrayList<String> removeList = new ArrayList<>();
-
-            for (String newWord : cloneList) {
-
-                if (isOneCharApart(lastWord, newWord)){
-                    int moves = currLadder.moves + 1;
-
-                    // Extend the current ladder
-                    LadderInfo newLadder = new LadderInfo(newWord, moves, currLadder.ladder + " " + newWord);
-                    if (newWord.equals(b)) {
-                        done = true;
-                        System.out.println("Shortest ladder found: " + newLadder.ladder +
-                                " " + moves + " total enqueues " + count);
-                    }
-                    // Append this ladder to the end of the queue
-                    removeList.add(newWord);
-                    solutionQueue.addAtEnd(newLadder);
-//                    System.out.println("Adding to the queue" + newLadder.toString());
-                    // Count here
-                    count++;
-                }
-            }
-            for(String useWord : removeList){
-                cloneList.remove(useWord);
-            }
-        }
-        if (!done) {
-            System.out.println("No ladder found from " + a + " to " + b + ": " +
-                    (wordLists[a.length()].contains(a) ? "" : "Original words not found in dictionary") +
-                    (a.length() == b.length() ? "" : " Words not the same length"));
-        }
-    }
-
-    public void findLadderAStar(String a, String b) {
-        ArrayList<String> listAVL = wordLists[a.length()];
+    public void findLadder(String a, String b, Queue<LadderInfo> queue, boolean isAStar) {
+        ArrayList<String> listAVL = wordLists[a.length()-1];
+        ArrayList<String> cloneList = (ArrayList<String>) listAVL.clone();
 
         System.out.println("Seeking an A* solution from " + a + " to " + b);
 
@@ -166,7 +90,7 @@ public class LadderGameSolution {
             return;
         }
 
-        if (a.length() != b.length() || !wordLists[a.length()].contains(a) || !wordLists[b.length()].contains(b)) {
+        if (a.length() != b.length() || !wordLists[a.length()-1].contains(a) || !wordLists[b.length()-1].contains(b)) {
             System.out.println("No solution: Invalid input words");
             return;
         }
@@ -175,20 +99,25 @@ public class LadderGameSolution {
         int count = 0;
 
         // Initialize the priority queue with the initial ladder
-        priorityQueue.insert(new LadderInfo(a, 0, a, heuristicCost(a, b)));
-
-        while (!priorityQueue.isEmpty()) {
-            LadderInfo currLadder = priorityQueue.findMin();
+        queue.add(new LadderInfo(a, 0, a, getCost(a, b)));
+        cloneList.remove(a);
+        while (!queue.isEmpty()) {
+            LadderInfo currLadder = queue.remove();
+            // Remove processed words from the clone list
             String lastWord = currLadder.lastWord;
-            ArrayList<String> removeList = new ArrayList<>();
 
-            for (String newWord : listAVL) {
-                if (isOneCharApart(lastWord, newWord)) {
+            ArrayList<String> removeList = new ArrayList<>();
+            for (String newWord : cloneList) {
+                if (getCost(lastWord, newWord) == 1) {
                     int moves = currLadder.moves + 1;
 
                     // Extend the current ladder
-                    LadderInfo newLadder = new LadderInfo(newWord, moves, currLadder.ladder + " " + newWord, totalCost(newWord, b, moves));
-
+                    LadderInfo newLadder;
+                    if (isAStar) {
+                        newLadder = new LadderInfo(newWord, moves, currLadder.ladder + " " + newWord, totalCost(newWord, b, moves));
+                    } else {
+                        newLadder = new LadderInfo(newWord, moves, currLadder.ladder + " " + newWord);
+                    }
                     if (newWord.equals(b)) {
                         done = true;
                         System.out.println("[ " + newLadder.ladder + "] total enqueues " + count);
@@ -197,14 +126,11 @@ public class LadderGameSolution {
 
                     // Append this ladder to the priority queue
                     removeList.add(newWord);
-                    priorityQueue.insert(newLadder);
+                    queue.add(newLadder);
                     count++;
                 }
             }
-            // Remove processed words from the clone list
-            listAVL.removeAll(removeList);
-            priorityQueue.deleteMin();
-
+            cloneList.removeAll(removeList);
         }
 
         if (!done) {
@@ -213,12 +139,15 @@ public class LadderGameSolution {
     }
 
     /**
-     * Heuristic function for A* search.
+     * Calculate num of different Char between 2 words.
      * @param a current word
      * @param b target word
      * @return heuristic cost
      */
-    private int heuristicCost(String a, String b) {
+    private int getCost(String a, String b) {
+        if (a.length() != b.length()){
+            return -1;
+        }
         int cost = 0;
         for (int i = 0; i < a.length(); i++) {
             if (a.charAt(i) != b.charAt(i)) {
@@ -229,7 +158,7 @@ public class LadderGameSolution {
     }
     private int totalCost(String word, String target, int moves) {
         // Calculate the total cost (f(n)) for A* search
-        return heuristicCost(word, target) + moves;
+        return getCost(word, target) + moves;
     }
     /**
      * Generate two random words of length len for a word ladder problem.
@@ -258,13 +187,11 @@ public class LadderGameSolution {
         // This organization allows the dictionary to be read in only once.
         LadderGameSolution g = new LadderGameSolution("src/dictionary.txt");
         g.play("kiss", "woof");
-        //        for (int i = 0; i < source.length; i++) {
-//            g.play(source[i], dest[i]);
-//        }
-
-//        int RANDOMCT = 8;
-//        for (int i = 4; i <= RANDOMCT; i++)
-//            g.play(i);
+        g.play("cock", "numb");
+        g.play("jura", "such");
+        g.play("stet", "whey");
+        g.play("rums", "numb");
+        g.play("irk", "yuk");
 
     }
 }

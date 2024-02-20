@@ -20,7 +20,7 @@
  * Note that all "matching" is based on the compareTo method.
  * @author Mark Allen Weiss
  */
-public class AVLTree<T extends Comparable<? super T>>
+public class AVLTree<T extends Comparable<? super T>> implements Queue<T>
 {
     /**
      * Construct the tree.
@@ -110,10 +110,23 @@ public class AVLTree<T extends Comparable<? super T>>
         root = null;
     }
 
+    @Override
+    public T remove() {
+        T min = findMin();
+        deleteMin();
+        return min;
+    }
+
+    @Override
+    public void add(T data) {
+        insert(data);
+    }
+
     /**
      * Test if the tree is logically empty.
      * @return true if empty, false otherwise.
      */
+    @Override
     public boolean isEmpty() {
         return root == null;
     }

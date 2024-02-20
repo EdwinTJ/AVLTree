@@ -1,4 +1,4 @@
-public class MyLinkedList<E> {
+public class MyLinkedList<E> implements Queue<E> {
     private Node<E> front;
     private Node<E> rear;
 
@@ -36,6 +36,16 @@ public class MyLinkedList<E> {
         System.out.println();
     }
 
+    @Override
+    public E remove() {
+        return removeFromFront();
+    }
+
+    @Override
+    public void add(E data) {
+        addAtEnd(data);
+    }
+    @Override
     public boolean isEmpty() {
         return front == null;
     }

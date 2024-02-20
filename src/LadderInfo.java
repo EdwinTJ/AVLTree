@@ -21,21 +21,13 @@ public class LadderInfo implements Comparable<LadderInfo> {
         this.lastWord = word;
         this.moves = moves;
         this.ladder = ladder;
-        this.priority = priority;
-    }
-    // Copy constructor for copying the move sequence
-    public LadderInfo(LadderInfo other) {
-        this.lastWord = other.lastWord;
-        this.moves = other.moves;
-        this.ladder = other.ladder;
     }
 
 
-
-
+    @Override
     public int compareTo(LadderInfo other) {
         // Compare based on the number of moves
-        return Integer.compare(this.moves, other.moves);
+        return Integer.compare(this.priority, other.priority);
     }
     public String toString2(){
        return "Word " + lastWord    + " Moves " +moves  + " Ladder ["+ ladder +"]";
